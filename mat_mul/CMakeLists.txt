@@ -1,0 +1,1 @@
+add_executable(mat_mul mat_mul.cu)

@@ -45,14 +45,13 @@ void reduce_sum_cpu(const float* input, size_t n, size_t dim, float* output) {
   printf("reduce_sum_cpu %ld ms\n",t.elapsed());
 }
 
-std::mt19937 rnd(std::random_device{}());
 
 signed main(){
   int n = 1<<15, dim = 1<<15;
   float* input_vec = (float*) malloc(n * dim * sizeof(float));
   float* output_vec1 = (float*) malloc(dim * sizeof(float));
   float* output_vec2 = (float*) malloc(dim * sizeof(float));
-  for(int i = 0; i < n * dim; i++) input_vec[i] = rnd() & 0xff;
+  initialData(input_vec, n * dim);
   reduce_sum(input_vec, n, dim, output_vec1);
   reduce_sum_cpu(input_vec, n, dim, output_vec2);
   checkResult(output_vec1, output_vec2, dim);

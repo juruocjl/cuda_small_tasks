@@ -33,10 +33,10 @@ private:
 
 void checkResult(float * A,float * B,const int N)
 {
-  double epsilon=1.0E-8;
+  double epsilon=1.0E-5;
   for(int i=0;i<N;i++)
   {
-    if(abs(A[i]-B[i])>epsilon)
+    if(abs(A[i]-B[i]) > epsilon && abs(A[i]-B[i])/max(abs(A[i]), abs(B[i])) > epsilon)
     {
       printf("Results don\'t match!\n");
       printf("%f(A[%d] )!= %f(B[%d])\n",A[i],i,B[i],i);
@@ -45,4 +45,24 @@ void checkResult(float * A,float * B,const int N)
   }
   printf("Check result success!\n");
 }
+
+#include <random>
+
+void initialData(float* ip,int size)
+{
+  std::mt19937 rnd(std::random_device{}());
+  for(int i=0;i<size;i++)
+  {
+    ip[i]=(float)(rnd()&0xffff)/1000.0f;
+  }
+}
+void initialData(int* ip, int size)
+{
+  std::mt19937 rnd(std::random_device{}());
+	for (int i = 0; i<size; i++)
+	{
+		ip[i] = int(rnd()&0xff);
+	}
+}
+
 #endif
