@@ -14,6 +14,8 @@
   }\
 }
 
+#define PrintTime() do{printf("%s use %ld ms\n", __func__, t.elapsed());}while(0)
+
 #include<chrono>
 using namespace std;
 using namespace std::chrono;
@@ -39,13 +41,32 @@ void checkResult(float * A,float * B,const int N)
     if(abs(A[i]-B[i]) > epsilon && abs(A[i]-B[i])/max(abs(A[i]), abs(B[i])) > epsilon)
     {
       printf("Results don\'t match!\n");
-      printf("%f(A[%d] )!= %f(B[%d])\n",A[i],i,B[i],i);
+      printf("%f(A[%d])!= %f(B[%d])\n",A[i],i,B[i],i);
       return;
     }
   }
   printf("Check result success!\n");
 }
 
+#include <vector>
+void checkResult(std::vector<int>&A,std::vector<int>&B)
+{
+  size_t N=A.size();
+  if (A.size() != B.size()) {
+    printf("Results don\'t match!\n");
+    printf("A and B is not same size\n");
+  }
+  for(int i=0;i<N;i++)
+  {
+    if(A[i] != B[i])
+    {
+      printf("Results don\'t match!\n");
+      printf("%d(A[%d])!= %d(B[%d])\n",A[i],i,B[i],i);
+      return;
+    }
+  }
+  printf("Check result success!\n");
+}
 #include <random>
 
 void initialData(float* ip,int size)
