@@ -17,12 +17,14 @@ Check result success!
 
 [mat_mul.cu](mat_mul/mat_mul.cu)
 ```
-mat_mul_cpu use 2025 ms
-mat_mul_v1 use 590 ms
+mat_mul_cpu use 10529 ms
+mat_mul_v1 use 2332 ms
 Check result success!
-mat_mul_v2 use 233 ms
+mat_mul_v2 use 566 ms
 Check result success!
-mat_mul_cub use 27 ms
+mat_mul_cub use 41 ms
+Check result success!
+mat_mul_v3 use 102 ms
 Check result success!
 ```
 
