@@ -24,7 +24,7 @@ void reduce_sum(const float* i_h, size_t n, size_t dim, float* o_h) {
   reduce_sum_kernel<<<grid, block>>>(i_d, n, dim, o_d);
   cudaDeviceSynchronize();
   CHECK(cudaGetLastError());
-  printf("reduce_sum_gpu %ld ms\n",t.elapsed());
+  PrintTime();
   CHECK(cudaMemcpy(o_h, o_d, dim * sizeof(float), cudaMemcpyDeviceToHost));
   CHECK(cudaFree(i_d));
   CHECK(cudaFree(o_d));
@@ -42,7 +42,7 @@ void reduce_sum_cpu(const float* input, size_t n, size_t dim, float* output) {
       output[j + 3] += input[i * dim + j + 3];
     }
   }
-  printf("reduce_sum_cpu %ld ms\n",t.elapsed());
+  PrintTime();
 }
 
 
@@ -52,8 +52,8 @@ signed main(){
   float* output_vec1 = (float*) malloc(dim * sizeof(float));
   float* output_vec2 = (float*) malloc(dim * sizeof(float));
   initialData(input_vec, n * dim);
-  reduce_sum(input_vec, n, dim, output_vec1);
   reduce_sum_cpu(input_vec, n, dim, output_vec2);
+  reduce_sum(input_vec, n, dim, output_vec1);
   checkResult(output_vec1, output_vec2, dim);
   free(input_vec);
   free(output_vec1);
