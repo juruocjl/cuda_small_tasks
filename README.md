@@ -5,7 +5,7 @@
 
 ## Task1
 
-[reduce_sum.cu](blob/main/reduce_sum/reduce_sum.cu)
+[reduce_sum.cu](reduce_sum/reduce_sum.cu)
 
 ```
 reduce_sum_cpu use 290 ms
@@ -15,7 +15,7 @@ Check result success!
 
 ## Task2
 
-[mat_mul.cu](blob/main/mat_mul/mat_mul.cu)
+[mat_mul.cu](mat_mul/mat_mul.cu)
 ```
 mat_mul_cpu use 2025 ms
 mat_mul_v1 use 590 ms
@@ -28,7 +28,7 @@ Check result success!
 
 ## Task3
 
-[sort.cu](blob/main/sort/sort.cu)
+[sort.cu](sort/sort.cu)
 
 ```
 sort_cpu use 3368 ms
@@ -44,7 +44,7 @@ Check result success!
 
 ## Task4
 
-[debubble.cu](blob/main/debubble/debubble.cu)
+[debubble.cu](debubble/debubble.cu)
 
 ```
 debubble_cpu use 1375 ms
