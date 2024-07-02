@@ -5,6 +5,7 @@
 #include <vector>
 #include <algorithm>
 #include <cuda_runtime.h>
+#include <cub/cub.cuh>
 
 void sort_cpu(std :: vector<int> &nums) {
   Timer t;
@@ -146,6 +147,26 @@ void radix_sort(std::vector<int> &nums) {
   CHECK(cudaFree(sum));
 }
 
+void radix_sort_cub(std :: vector<int> &nums) {
+  int  n = nums.size();
+  int *a_d = nullptr;
+  int *b_d = nullptr;
+  CHECK(cudaMalloc(&a_d, n * sizeof(int)));
+  CHECK(cudaMalloc(&b_d, n * sizeof(int)));
+  CHECK(cudaMemcpy(a_d, nums.data(), n * sizeof(int), cudaMemcpyHostToDevice));
+  void *tmp_d = nullptr;
+  size_t tmp_size = 0;
+  Timer t;
+  CHECK(cub::DeviceRadixSort::SortKeys(tmp_d, tmp_size, a_d, b_d, n));
+  CHECK(cudaMalloc(&tmp_d, tmp_size));
+  CHECK(cub::DeviceRadixSort::SortKeys(tmp_d, tmp_size, a_d, b_d, n));
+  CHECK(cudaDeviceSynchronize());
+  PrintTime();
+  CHECK(cudaMemcpy(nums.data(), b_d, n * sizeof(int), cudaMemcpyDeviceToHost));
+  CHECK(cudaFree(a_d));
+  CHECK(cudaFree(b_d));
+  CHECK(cudaFree(tmp_d));
+}
 
 signed main(){
   size_t n = 1 << 25;
@@ -156,9 +177,9 @@ signed main(){
   }
   STD=A;
   sort_cpu(STD);
-  B = A;
-  bitonic_sort_cpu(B);
-  checkResult(STD,B);
+  // B = A;
+  // bitonic_sort_cpu(B);
+  // checkResult(STD,B);
   B = A;
   bitonic_sort(B);
   checkResult(STD,B);
@@ -167,6 +188,9 @@ signed main(){
   checkResult(STD,B);
   B = A;
   radix_sort(B);
+  checkResult(STD,B);
+  B = A;
+  radix_sort_cub(B);
   checkResult(STD,B);
   
 }
