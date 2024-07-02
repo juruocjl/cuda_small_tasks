@@ -3,6 +3,7 @@
 #include <cstdio>
 #include <random>
 #include <cuda_runtime.h>
+#include <cublas_v2.h>
 
 void mat_mul_cpu(const float *A, const float *B, size_t m, size_t n, size_t k, float *output) {
   Timer t;
@@ -14,7 +15,7 @@ void mat_mul_cpu(const float *A, const float *B, size_t m, size_t n, size_t k, f
       }
     }
   }
-  printf("mat_mul_cpu use %ld ms\n",t.elapsed());
+  PrintTime();
 }
 
 __global__ void mat_mul_v1_kernel (const float *A, const float *B, size_t m, size_t n, size_t k, float *C) {
@@ -40,7 +41,7 @@ void mat_mul_v1(const float *A_h, const float *B_h, size_t m, size_t n, size_t k
   mat_mul_v1_kernel<<<grid, block>>>(A_d, B_d, m, n, k, C_d);
   cudaDeviceSynchronize();
   CHECK(cudaGetLastError());
-  printf("mat_mul_v1 use %ld ms\n", t.elapsed());
+  PrintTime();
   CHECK(cudaMemcpy(C_h, C_d, m * k * sizeof(float), cudaMemcpyDeviceToHost));
   CHECK(cudaFree(A_d));
   CHECK(cudaFree(B_d));
@@ -80,28 +81,57 @@ void mat_mul_v2(const float *A_h, const float *B_h, size_t m, size_t n, size_t k
   mat_mul_v2_kernel<<<grid, block>>>(A_d, B_d, m, n, k, C_d);
   cudaDeviceSynchronize();
   CHECK(cudaGetLastError());
-  printf("mat_mul_v2 use %ld ms\n", t.elapsed());
+  PrintTime();
+  CHECK(cudaMemcpy(C_h, C_d, m * k * sizeof(float), cudaMemcpyDeviceToHost));
+  CHECK(cudaFree(A_d));
+  CHECK(cudaFree(B_d));
+  CHECK(cudaFree(C_d));
+}
+#undef BLOCK_SIZE
+
+void mat_mul_cub(const float *A_h, const float *B_h, size_t m, size_t n, size_t k, float *C_h) {
+  float *A_d, *B_d, *C_d;
+  CHECK(cudaMalloc(&A_d, m * n * sizeof(float)));
+  CHECK(cudaMalloc(&B_d, n * k * sizeof(float)));
+  CHECK(cudaMalloc(&C_d, m * k * sizeof(float)));
+  CHECK(cudaMemcpy(A_d, A_h, m * n * sizeof(float), cudaMemcpyHostToDevice));
+  CHECK(cudaMemcpy(B_d, B_h, n * k * sizeof(float), cudaMemcpyHostToDevice));
+  Timer t;
+  cublasHandle_t handle;
+  CUBLAS_CHECK(cublasCreate(&handle));
+  const float alpha = 1.0f;
+  const float beta = 0.0f;
+  CUBLAS_CHECK(cublasSgemm(handle, CUBLAS_OP_N, CUBLAS_OP_N, 
+                             k, m, n, &alpha, 
+                             B_d, k, A_d, n, 
+                             &beta, C_d, k));
+  CHECK(cudaDeviceSynchronize());
+  PrintTime();
   CHECK(cudaMemcpy(C_h, C_d, m * k * sizeof(float), cudaMemcpyDeviceToHost));
   CHECK(cudaFree(A_d));
   CHECK(cudaFree(B_d));
   CHECK(cudaFree(C_d));
 }
 
-#undef BLOCK_SIZE
 signed main(){
   int m = 1 << 11, n = 1 << 11, k = 1 << 11;
-  float *A, *B, *o1, *o2, *o3;
+  float *A, *B, *STD, *OUT;
   A = (float*)malloc(m * n * sizeof(float));
   B = (float*)malloc(n * k * sizeof(float));
-  o1 = (float*)malloc(m * k * sizeof(float));
-  o2 = (float*)malloc(m * k * sizeof(float));
-  o3 = (float*)malloc(m * k * sizeof(float));
+  STD = (float*)malloc(m * k * sizeof(float));
+  OUT = (float*)malloc(m * k * sizeof(float));
+  
   initialData(A, m * n);
   initialData(B, m * k);
-  mat_mul_cpu(A, B, n, m, k, o1);
-  mat_mul_v1(A, B, n, m, k, o2);
-  mat_mul_v2(A, B, n, m, k, o3);
-  checkResult(o1, o2 ,m * k);
-  checkResult(o1, o3 ,m * k);
-
+  mat_mul_cpu(A, B, n, m, k, STD);
+  mat_mul_v1(A, B, n, m, k, OUT);
+  checkResult(STD, OUT ,m * k);
+  mat_mul_v2(A, B, n, m, k, OUT);
+  checkResult(STD, OUT ,m * k);
+  mat_mul_cub(A, B, n, m, k, OUT);
+  checkResult(STD, OUT ,m * k);
+  free(A);
+  free(B);
+  free(STD);
+  free(OUT);
 }

@@ -13,6 +13,15 @@
       exit(1);\
   }\
 }
+#define CUBLAS_CHECK(call)\
+{\
+  const cublasStatus_t  error=call;\
+  if(error!=CUBLAS_STATUS_SUCCESS)\
+  {\
+      printf("ERROR: %s:%d,",__FILE__,__LINE__);\
+      exit(1);\
+  }\
+}
 
 #define PrintTime() do{printf("%s use %ld ms\n", __func__, t.elapsed());}while(0)
 
