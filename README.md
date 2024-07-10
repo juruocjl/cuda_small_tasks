@@ -17,13 +17,15 @@ Check result success!
 
 [mat_mul.cu](mat_mul/mat_mul.cu)
 ```
-mat_mul_cub kernel avg time 54.87562 ms after 100 tests
-mat_mul_v4 kernel avg time 88.44581 ms after 100 tests
-Check result success!
-mat_mul_v5 kernel avg time 86.84523 ms after 100 tests
-Check result success!
-mat_mul_v6 kernel avg time 87.58622 ms after 100 tests
-Check result success!
+cublasSgemm avg use 7.14007 ms in 100 tests
+mat_mul_v1_kernel avg use 589.63213 ms in 100 tests
+mat_mul_v2_kernel avg use 144.05709 ms in 100 tests
+mat_mul_v3_kernel avg use 29.23753 ms in 100 tests
+mat_mul_v4_kernel avg use 10.12860 ms in 100 tests
+mat_mul_v5_kernel avg use 10.69626 ms in 100 tests
+mat_mul_v6_kernel avg use 10.45179 ms in 100 tests
+mat_mul_v7_kernel avg use 7.30132 ms in 100 tests
+mat_mul_v8_kernel avg use 7.34459 ms in 100 tests
 ```
 
 ## Task3

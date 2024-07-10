@@ -18,11 +18,9 @@ void vector_add (const float* a_h, const float* b_h, float* c_h, int n) {
   CHECK(cudaMemcpy(b_d, b_h, n * sizeof(float), cudaMemcpyHostToDevice));
   dim3 block(1024);
   dim3 grid(n / block.x);
-  Timer t;
+  cudaTimer t;
   vector_add_kernel<<<grid, block>>>(a_d, b_d, c_d);
-  cudaDeviceSynchronize();
-  CHECK(cudaGetLastError());
-  printf("vector_add_gpu %ld ms\n",t.elapsed());
+  PrintTime();
   CHECK(cudaMemcpy(c_h, c_d, n * sizeof(float), cudaMemcpyDeviceToHost));
   CHECK(cudaFree(a_d));
   CHECK(cudaFree(b_d));
@@ -30,11 +28,11 @@ void vector_add (const float* a_h, const float* b_h, float* c_h, int n) {
 }
 
 void vector_add_cpu (const float* a, const float* b, float* c, int n) {
-  Timer t;
+  cudaTimer t;
   for (int i = 0; i < n; i++) {
     c[i] = a[i] + b[i];
   }
-  printf("vector_add_cpu %ld ms\n",t.elapsed());
+  PrintTime();
 }
 
 std::mt19937 rnd(std::random_device{}());

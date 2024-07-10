@@ -27,24 +27,25 @@ namespace dinner123{
   float last_time;
   bool out_time = 1;
 }
+
 #define PrintTime() {\
 dinner123::last_time = t.elapsed();\
 if(dinner123 :: out_time)printf("%s use %lf ms\n", __func__, dinner123::last_time);\
 }
-#define RUN(X, Times) {\
+
+
+#define RUN(X, ...) {\
 double sum = 0;\
-dinner123 :: out_time = 0;\
-for(int i = 0; i < Times; i++) {X; sum += dinner123 :: last_time;}\
-dinner123 :: out_time = 1;\
-printf(#X " avg time %.5lf ms\n", sum / Times);\
+for(int i = 0; i < RUN_TIMES; i++){cudaTimer t; X(__VA_ARGS__); sum += t.elapsed();}\
+if(RUN_TIMES > 1) printf("%s avg use %.5lf ms in %d tests\n", #X, sum / RUN_TIMES, RUN_TIMES);\
+else printf("%s use %.5lf ms\n", #X, sum / RUN_TIMES);\
 }
 
-#define RUN_kernel(X, Times) {\
+#define RUN_kernel(X, grid, block, ...) {\
 double sum = 0;\
-cudaTimer t;\
-for(int i = 0; i < Times; i++){t.reset(); X; sum += t.elapsed();}\
-printf("%s kernel avg time %.5lf ms after %d tests\n", __func__, sum / Times, Times);\
-X;\
+for(int i = 0; i < RUN_TIMES; i++){cudaTimer t; X<<<grid,block>>>(__VA_ARGS__); sum += t.elapsed();}\
+if(RUN_TIMES > 1) printf("%s avg use %.5lf ms in %d tests\n", #X, sum / RUN_TIMES, RUN_TIMES);\
+else printf("%s use %.5lf ms\n", #X, sum / RUN_TIMES);\
 }
 
 #include<chrono>
@@ -71,6 +72,7 @@ public:
         // Allocate CUDA events that we'll use for timing
         CHECK(cudaEventCreate(&start));
         CHECK(cudaEventCreate(&stop));
+        CHECK(cudaEventRecord(start, NULL));
       }
     void reset() {CHECK(cudaEventRecord(start, NULL)); }
     //默认输出毫秒
@@ -88,7 +90,7 @@ private:
 
 void checkResult(float * A,float * B,const int N)
 {
-  double epsilon=1.0E-5;
+  double epsilon=1.0E-6;
   for(int i=0;i<N;i++)
   {
     if(abs(A[i]-B[i]) > epsilon && abs(A[i]-B[i])/max(abs(A[i]), abs(B[i])) > epsilon)
