@@ -160,5 +160,6 @@ const int multiProcessorCount = [](){
   for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < n; i += blockDim.x * gridDim.x)
 #define LIMITED_BLOCK_LOOP(i, n) \
   for (int i = threadIdx.x; i < n; i += blockDim.x)
-
+#include <cooperative_groups.h>
+namespace cg = cooperative_groups;
 #endif

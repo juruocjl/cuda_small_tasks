@@ -130,7 +130,7 @@ void radix_sort(std::vector<int> &nums) {
   CHECK(cudaMalloc(&cnt, n / 1024 * 256 * sizeof(int)));
   CHECK(cudaMalloc(&sum, 256 * sizeof(int)));
   CHECK(cudaMemcpy(a1, nums.data(), Bytes, cudaMemcpyHostToDevice));
-  Timer t;
+  cudaTimer t;
   for (uint i = 0; i < 4; i++) {
     radix_sort_count_kernel<<<n / 1024, 1024>>>(a1, cnt, i * 8);
     radix_sort_prefix_kernel<<<1, 256>>>(cnt, sum, n / 1024);
@@ -156,11 +156,10 @@ void radix_sort_cub(std :: vector<int> &nums) {
   CHECK(cudaMemcpy(a_d, nums.data(), n * sizeof(int), cudaMemcpyHostToDevice));
   void *tmp_d = nullptr;
   size_t tmp_size = 0;
-  Timer t;
   CHECK(cub::DeviceRadixSort::SortKeys(tmp_d, tmp_size, a_d, b_d, n));
   CHECK(cudaMalloc(&tmp_d, tmp_size));
+  cudaTimer t;
   CHECK(cub::DeviceRadixSort::SortKeys(tmp_d, tmp_size, a_d, b_d, n));
-  CHECK(cudaDeviceSynchronize());
   PrintTime();
   CHECK(cudaMemcpy(nums.data(), b_d, n * sizeof(int), cudaMemcpyDeviceToHost));
   CHECK(cudaFree(a_d));
@@ -168,29 +167,107 @@ void radix_sort_cub(std :: vector<int> &nums) {
   CHECK(cudaFree(tmp_d));
 }
 
+template<class T>
+__global__ void sum1_kernel(T*sum, int i){
+  int j = i - 1 + i * 2 * (blockIdx.x * blockDim.x + threadIdx.x);
+  sum[i + j] += sum[j];
+}
+template<class T>
+__global__ void sum2_kernel(T*sum, int i){
+  if (blockIdx.x + 1 != gridDim.x || threadIdx.x + 1 != blockDim.x) {
+    int j = i * 2 - 1 + i * 2 * (blockIdx.x * blockDim.x + threadIdx.x);
+    sum[i + j] += sum[j];
+  }
+}
+template<class T>
+void presum(T *a, int n){
+  for (int i = 1; i < n; i *= 2){
+    int tot = n / i / 2;
+    if(tot < 1024) sum1_kernel<<<1, tot>>>(a, i);
+    else sum1_kernel<<<tot / 1024, 1024>>>(a, i);
+  }
+  for (int i = n / 4; i; i /= 2) {
+    int tot = n / i / 2;
+    if(tot < 1024) sum2_kernel<<<1, tot>>>(a, i);
+    else sum2_kernel<<<tot / 1024, 1024>>>(a, i);
+  }
+}
+#define TILE_SIZE 32
+__global__ void radix_sort_v2_pre_kernel(const uint *a, uint *cnt, int n, int shift){
+  cg :: thread_block_tile<TILE_SIZE> g = cg::tiled_partition<TILE_SIZE>(cg::this_thread_block());
+  int rank = g.thread_rank();
+  LIMITED_KERNEL_LOOP(i, n) {
+    bool v = a[i] >> shift & 1;
+    unsigned vote = g.ballot(v);
+    if (rank == 0) {
+      cnt[i / TILE_SIZE] = __popc(vote);
+    }
+  }
+}
+__global__ void radix_sort_v2_place_kernel(const uint *a, const uint *cnt, uint *b, int n, int shift){
+  cg :: thread_block_tile<TILE_SIZE> g = cg::tiled_partition<TILE_SIZE>(cg::this_thread_block());
+  int rank = g.thread_rank();
+  int tot0 = n - cnt[n / TILE_SIZE - 1];
+  LIMITED_KERNEL_LOOP(i, n) {
+    bool v = a[i] >> shift & 1;
+    uint vote = g.ballot(v);
+    int pre1 = cnt[i / TILE_SIZE] - __popc(vote >> rank);
+    if(v) {
+      b[tot0 + pre1] = a[i];
+    } else {
+      b[i - pre1] = a[i];
+    }
+  }
+}
+void radix_sort_v2(std::vector<int> &nums) {
+  uint n = nums.size(), Bytes = n * sizeof(int);
+  for(uint i = 0; i < n; i++) nums[i] = ((unsigned)nums[i]) ^ 0x80000000;
+  uint *a1, *a2, *cnt;
+  CHECK(cudaMalloc(&a1, Bytes));
+  CHECK(cudaMalloc(&a2, Bytes));
+  CHECK(cudaMalloc(&cnt, n / 32 * sizeof(int)));
+  CHECK(cudaMemcpy(a1, nums.data(), Bytes, cudaMemcpyHostToDevice));
+  cudaTimer t;
+  for (uint i = 0; i < 32; i++) {
+    radix_sort_v2_pre_kernel<<<multiProcessorCount, 1024>>>(a1, cnt, n, i);
+    presum(cnt, n / TILE_SIZE);
+    radix_sort_v2_place_kernel<<<multiProcessorCount, 1024>>>(a1, cnt, a2, n, i);
+    std :: swap(a1, a2);
+  }
+  PrintTime();
+  CHECK(cudaMemcpy(nums.data(), a1, Bytes, cudaMemcpyDeviceToHost));
+  for(uint i = 0; i < n; i++) nums[i] = ((unsigned)nums[i]) ^  0x80000000;
+  CHECK(cudaFree(a1));
+  CHECK(cudaFree(a2));
+  CHECK(cudaFree(cnt));
+}
+#undef TILE_SIZE
 signed main(){
-  size_t n = 1 << 25;
+  size_t n = 1 << 28;
   std :: mt19937 rnd(random_device{}());
   std :: vector<int> A(n),STD,B;
   for (int i = 0; i < n; i++) {
     A[i] = rnd();
   }
-  STD=A;
-  sort_cpu(STD);
+  // STD=A;
+  // sort_cpu(STD);
   // B = A;
   // bitonic_sort_cpu(B);
   // checkResult(STD,B);
-  B = A;
-  bitonic_sort(B);
-  checkResult(STD,B);
-  B = A;
-  radix_sort_cpu(B);
-  checkResult(STD,B);
+  // B = A;
+  // bitonic_sort(B);
+  // checkResult(STD,B);
+  // B = A;
+  // radix_sort_cpu(B);
+  // checkResult(STD,B);
+  STD = A;
+  radix_sort_cub(STD);
+  // checkResult(STD,B);
   B = A;
   radix_sort(B);
   checkResult(STD,B);
   B = A;
-  radix_sort_cub(B);
+  radix_sort_v2(B);
   checkResult(STD,B);
   
 }
