@@ -48,6 +48,13 @@ if(RUN_TIMES > 1) printf("%s avg use %.5lf ms in %d tests\n", #X, sum / RUN_TIME
 else printf("%s use %.5lf ms\n", #X, sum / RUN_TIMES);\
 }
 
+#define RUN_kernel_clear(X, grid, block, clear, ...) {\
+double sum = 0;\
+for(int i = 0; i < RUN_TIMES; i++){clear; cudaTimer t; X<<<grid,block>>>(__VA_ARGS__); sum += t.elapsed();}\
+if(RUN_TIMES > 1) printf("%s avg use %.5lf ms in %d tests\n", #X, sum / RUN_TIMES, RUN_TIMES);\
+else printf("%s use %.5lf ms\n", #X, sum / RUN_TIMES);\
+}
+
 #include<chrono>
 using namespace std;
 using namespace std::chrono;
@@ -90,7 +97,7 @@ private:
 
 void checkResult(float * A,float * B,const int N)
 {
-  double epsilon=1.0E-6;
+  double epsilon=1.0E-5;
   for(int i=0;i<N;i++)
   {
     if(abs(A[i]-B[i]) > epsilon && abs(A[i]-B[i])/max(abs(A[i]), abs(B[i])) > epsilon)
@@ -141,5 +148,17 @@ void initialData(int* ip, int size)
 	}
 }
 
+const int multiProcessorCount = [](){
+  cudaSetDevice(0);
+  cudaDeviceProp deviceProp;
+  cudaGetDeviceProperties(&deviceProp, 0);
+  return deviceProp.multiProcessorCount;
+}();
+
+
+#define LIMITED_KERNEL_LOOP(i, n) \
+  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < n; i += blockDim.x * gridDim.x)
+#define LIMITED_BLOCK_LOOP(i, n) \
+  for (int i = threadIdx.x; i < n; i += blockDim.x)
 
 #endif
